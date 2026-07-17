@@ -158,10 +158,11 @@ async function openApp(appName: string): Promise<void> {
         paintCritiqueIntervalId = window.setInterval(critiquePaintDrawing, 15000);
     }
     else if (appName === 'doom' && !dosInstances['doom']) {
-        const doomContainer = document.getElementById('doom-content') as HTMLDivElement;
-        if (doomContainer) {
-            doomContainer.innerHTML = '<iframe src="https://js-dos.com/games/doom.exe.html" width="100%" height="100%" frameborder="0" scrolling="no" allowfullscreen></iframe>';
+        const doomGameContainer = document.getElementById('doom-game-container') as HTMLDivElement | null;
+        if (doomGameContainer) {
+            doomGameContainer.innerHTML = '<iframe src="https://js-dos.com/games/doom.exe.html" width="100%" height="100%" frameborder="0" scrolling="no" allowfullscreen></iframe>';
             dosInstances['doom'] = { initialized: true };
+            initDoomDashboard();
         }
     } else if (appName === 'gemini') {
         await initGeminiChat(windowElement);
@@ -191,8 +192,20 @@ function closeApp(appName: string): void {
 
     if (dosInstances[appName]) {
         console.log(`Cleaning up ${appName} instance (iframe approach)`);
-        const container = document.getElementById(`${appName}-content`);
-        if (container) container.innerHTML = '';
+        if (appName === 'doom') {
+            const container = document.getElementById('doom-game-container');
+            if (container) {
+                container.innerHTML = `
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #ff0000; font-family: monospace; font-size: 0.9rem;">
+                      <p>LOADING SYSTEM...</p>
+                      <p>DOOM II ENGINE READY</p>
+                    </div>
+                `;
+            }
+        } else {
+            const container = document.getElementById(`${appName}-content`);
+            if (container) container.innerHTML = '';
+        }
         delete dosInstances[appName];
     }
 
@@ -337,7 +350,7 @@ async function initGeminiChat(windowElement: HTMLDivElement): Promise<void> {
 
         try {
              // @ts-ignore
-            const chat = geminiInstance.chats.create({ model: 'gemini-2.5-flash', history: [] });
+            const chat = geminiInstance.chats.create({ model: 'gemini-3.5-flash', history: [] });
              // @ts-ignore
             const result = await chat.sendMessageStream({message: message});
             let fullResponse = "";
@@ -379,7 +392,7 @@ async function initNotepadStory(windowElement: HTMLDivElement): Promise<void> {
             }
             const prompt = "Write me a short creative story (250-300 words) with an unexpected twist ending. Make it engaging and suitable for all ages.";
              // @ts-ignore
-            const result = await geminiInstance.models.generateContentStream({ model: 'gemini-2.5-flash', contents: prompt });
+            const result = await geminiInstance.models.generateContentStream({ model: 'gemini-3.5-flash', contents: prompt });
             textarea.value = currentText + "\n\n";
             for await (const chunk of result) {
                  textarea.value += chunk.text || "";
@@ -458,7 +471,7 @@ function initAiBrowser(windowElement: HTMLDivElement): void {
                 `;
                  // @ts-ignore
                 const result = await geminiInstance.models.generateContent({
-                    model: 'gemini-2.5-flash-image',
+                    model: 'gemini-3.1-flash-lite-image',
                     contents: [{role: 'user', parts: [{text: websitePrompt}]}],
                     config: { temperature: 0.9, responseModalities: ['TEXT', 'IMAGE'] }
                 });
@@ -491,6 +504,42 @@ function initAiBrowser(windowElement: HTMLDivElement): void {
     addressBar.addEventListener('keydown', (e) => { if (e.key === 'Enter') navigateToUrl(addressBar.value); });
     addressBar.addEventListener('click', () => addressBar.select());
 }
+
+/** Toggles the maximized state of a window, saving and restoring original dimensions */
+function toggleMaximize(windowElement: HTMLDivElement): void {
+    if (windowElement.classList.contains('maximized')) {
+        windowElement.classList.remove('maximized');
+        const prevTop = windowElement.dataset.prevTop;
+        const prevLeft = windowElement.dataset.prevLeft;
+        const prevWidth = windowElement.dataset.prevWidth;
+        const prevHeight = windowElement.dataset.prevHeight;
+
+        if (prevTop) windowElement.style.top = prevTop;
+        if (prevLeft) windowElement.style.left = prevLeft;
+        if (prevWidth) windowElement.style.width = prevWidth;
+        if (prevHeight) windowElement.style.height = prevHeight;
+
+        const maxBtn = windowElement.querySelector('.window-maximize') as HTMLDivElement | null;
+        if (maxBtn) maxBtn.textContent = '□';
+    } else {
+        windowElement.dataset.prevTop = windowElement.style.top;
+        windowElement.dataset.prevLeft = windowElement.style.left;
+        windowElement.dataset.prevWidth = windowElement.style.width || `${windowElement.offsetWidth}px`;
+        windowElement.dataset.prevHeight = windowElement.style.height || `${windowElement.offsetHeight}px`;
+
+        windowElement.style.top = '0px';
+        windowElement.style.left = '0px';
+        windowElement.style.width = '100vw';
+        windowElement.style.height = 'calc(100vh - 36px)';
+
+        windowElement.classList.add('maximized');
+
+        const maxBtn = windowElement.querySelector('.window-maximize') as HTMLDivElement | null;
+        if (maxBtn) maxBtn.textContent = '❐';
+    }
+    window.dispatchEvent(new Event('resize'));
+}
+
 // --- Event Listeners Setup ---
 
 icons.forEach(icon => {
@@ -524,6 +573,7 @@ windows.forEach(windowElement => {
     const titleBar = windowElement.querySelector('.window-titlebar') as HTMLDivElement | null;
     const closeButton = windowElement.querySelector('.window-close') as HTMLDivElement | null;
     const minimizeButton = windowElement.querySelector('.window-minimize') as HTMLDivElement | null;
+    const maximizeButton = windowElement.querySelector('.window-maximize') as HTMLDivElement | null;
 
     windowElement.addEventListener('mousedown', () => bringToFront(windowElement), true);
 
@@ -533,11 +583,20 @@ windows.forEach(windowElement => {
     if (minimizeButton) {
         minimizeButton.addEventListener('click', (e) => { e.stopPropagation(); minimizeApp(windowElement.id); });
     }
+    if (maximizeButton) {
+        maximizeButton.addEventListener('click', (e) => { e.stopPropagation(); toggleMaximize(windowElement); });
+    }
 
     if (titleBar) {
+        titleBar.addEventListener('dblclick', (e) => {
+            if ((e.target as Element).closest('.window-control-button')) return;
+            toggleMaximize(windowElement);
+        });
+
         let isDragging = false;
         let dragOffsetX: number, dragOffsetY: number;
         const startDragging = (e: MouseEvent) => {
+             if (windowElement.classList.contains('maximized')) return;
              if (!(e.target === titleBar || titleBar.contains(e.target as Node)) || (e.target as Element).closest('.window-control-button')) {
                  isDragging = false; return;
             }
@@ -606,7 +665,7 @@ async function critiquePaintDrawing(): Promise<void> {
         const prompt = "Critique this drawing with witty sarcasm (1-2 sentences).";
         const imagePart = { inlineData: { data: base64Data, mimeType: "image/jpeg" } };
          // @ts-ignore
-        const result = await geminiInstance.models.generateContent({ model: "gemini-2.5-pro-exp-03-25", contents: [{ role: "user", parts: [ { text: prompt }, imagePart] }] });
+        const result = await geminiInstance.models.generateContent({ model: "gemini-3.5-flash", contents: [{ role: "user", parts: [ { text: prompt }, imagePart] }] });
         const critique = result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "Is this art?";
         if (assistantBubble) assistantBubble.textContent = critique;
     } catch (error: any) {
@@ -871,7 +930,7 @@ function initMinesweeperGame(windowElement: HTMLDivElement): void {
             const boardState = getBoardStateAsText();
             const prompt = `Minesweeper state:\n${boardState}\nShort, witty hint (1-2 sentences) for a safe move or dangerous area. Don't reveal exact mines unless certain. Hint:`;
              // @ts-ignore
-            const result = await geminiInstance.models.generateContent({ model: "gemini-2.5-flash", contents: [{role:"user", parts:[{text:prompt}]}], config: {temperature: 0.7}});
+            const result = await geminiInstance.models.generateContent({ model: "gemini-3.5-flash", contents: [{role:"user", parts:[{text:prompt}]}], config: {temperature: 0.7}});
             const hintText = result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "Try clicking somewhere?";
             commentaryElement.textContent = hintText;
         } catch (error: any) { commentaryElement.textContent = `Hint Error: ${error.message}`;
@@ -1092,4 +1151,224 @@ async function initializeGeminiIfNeeded(context: string): Promise<boolean> {
         alert(`CRITICAL ERROR: Gemini AI failed to initialize. ${error.message}`);
         return false;
     }
+}
+
+/** Initializes the interactive side dashboard in the Doom window */
+function initDoomDashboard(): void {
+    const chatHistory = document.getElementById('doom-chat-history') as HTMLDivElement | null;
+    const chatInput = document.getElementById('doom-chat-input') as HTMLInputElement | null;
+    const chatSend = document.getElementById('doom-chat-send') as HTMLButtonElement | null;
+    const statusMessage = document.getElementById('doom-status-message') as HTMLDivElement | null;
+
+    if (!chatHistory || !chatInput || !chatSend || !statusMessage) return;
+
+    function addMarineMessage(sender: string, text: string, color: string = '#00ff00') {
+        if (!chatHistory) return;
+        const p = document.createElement('p');
+        p.style.margin = '2px 0';
+        p.style.lineHeight = '1.2';
+
+        const spanSender = document.createElement('span');
+        spanSender.textContent = sender + ': ';
+        spanSender.style.fontWeight = 'bold';
+        spanSender.style.color = sender === 'YOU' ? '#ffff00' : '#ff3333';
+
+        const spanText = document.createElement('span');
+        spanText.textContent = text;
+        spanText.style.color = color;
+
+        p.appendChild(spanSender);
+        p.appendChild(spanText);
+        chatHistory.appendChild(p);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    function playRetroSound(type: string) {
+        try {
+            // @ts-ignore
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            if (type === 'shotgun') {
+                const bufferSize = ctx.sampleRate * 0.4;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noiseSource = ctx.createBufferSource();
+                noiseSource.buffer = buffer;
+
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1200, ctx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
+
+                const gainNode = ctx.createGain();
+                gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.38);
+
+                noiseSource.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                noiseSource.start();
+            } else if (type === 'secret') {
+                const osc1 = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                osc1.type = 'sawtooth';
+                osc1.frequency.setValueAtTime(220, ctx.currentTime);
+                osc1.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.35);
+
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(225, ctx.currentTime);
+                osc2.frequency.exponentialRampToValueAtTime(885, ctx.currentTime + 0.35);
+
+                gainNode.gain.setValueAtTime(0.12, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+
+                osc1.connect(gainNode);
+                osc2.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                osc1.start();
+                osc2.start();
+                osc1.stop(ctx.currentTime + 0.35);
+                osc2.stop(ctx.currentTime + 0.35);
+            } else if (type === 'pickup') {
+                const osc = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(440, ctx.currentTime);
+                osc.frequency.setValueAtTime(554, ctx.currentTime + 0.07);
+                osc.frequency.setValueAtTime(659, ctx.currentTime + 0.14);
+                osc.frequency.setValueAtTime(880, ctx.currentTime + 0.21);
+
+                gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.28);
+
+                osc.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                osc.start();
+                osc.stop(ctx.currentTime + 0.28);
+            } else if (type === 'grunt') {
+                const osc = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(140, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.14);
+
+                gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.16);
+
+                osc.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                osc.start();
+                osc.stop(ctx.currentTime + 0.16);
+            }
+        } catch (e) {
+            console.warn("Web Audio API warning:", e);
+        }
+    }
+
+    document.querySelectorAll('.doom-sound-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const soundType = btn.getAttribute('data-sound');
+            if (soundType) playRetroSound(soundType);
+        });
+    });
+
+    document.querySelectorAll('.doom-cheat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const cheatCode = btn.getAttribute('data-cheat');
+            if (cheatCode) {
+                navigator.clipboard.writeText(cheatCode).then(() => {
+                    playRetroSound('pickup');
+                    if (statusMessage) {
+                        statusMessage.textContent = `CODE ${cheatCode} COPIED!`;
+                        statusMessage.style.color = '#ffff00';
+                        setTimeout(() => {
+                            if (statusMessage.textContent === `CODE ${cheatCode} COPIED!`) {
+                                statusMessage.textContent = 'Press Esc & type in-game!';
+                                statusMessage.style.color = '#00ff00';
+                            }
+                        }, 1800);
+                    }
+                }).catch(err => {
+                    console.error("Failed to copy cheat code", err);
+                });
+            }
+        });
+    });
+
+    const sendMarineAiMessage = async () => {
+        const query = chatInput.value.trim();
+        if (!query) return;
+
+        addMarineMessage('YOU', query, '#ffff00');
+        chatInput.value = '';
+        chatInput.disabled = true;
+        chatSend.disabled = true;
+
+        const typingIndicator = document.createElement('p');
+        typingIndicator.id = 'doom-marine-typing';
+        typingIndicator.textContent = 'MARINE-AI: Analyzing tactical feeds...';
+        typingIndicator.style.color = '#888';
+        typingIndicator.style.fontStyle = 'italic';
+        typingIndicator.style.margin = '2px 0';
+        typingIndicator.style.fontSize = '0.7rem';
+        chatHistory.appendChild(typingIndicator);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+
+        try {
+            if (!geminiInstance) {
+                const success = await initializeGeminiIfNeeded('initDoomDashboard');
+                if (!success) {
+                    throw new Error("AI engine failed to initialize.");
+                }
+            }
+
+            const systemPrompt = `You are a gritty, war-hardened Space Marine inside Doom II. 
+The user is playing Doom II and is asking you a tactical question, seeking hints, or wanting custom marine lore.
+You MUST reply in a highly retro, rough, grunting space-marine tone. Keep your response extremely concise (maximum 2 sentences).
+Refer to Doom II terms (e.g. demons, imps, BFG9000, keys, double barrel, shotgun, health potions, secrets, E1M1, cyberdemon, etc.). 
+No modern politeness. Answer the question: "${query}"`;
+
+            // @ts-ignore
+            const result = await geminiInstance.models.generateContent({
+                model: 'gemini-3.5-flash',
+                contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
+                config: { temperature: 0.85 }
+            });
+
+            const reply = result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "Grrr... can't talk, reloading!";
+
+            const typingEl = document.getElementById('doom-marine-typing');
+            if (typingEl) typingEl.remove();
+
+            addMarineMessage('MARINE-AI', reply, '#00ff00');
+            playRetroSound('secret');
+        } catch (error: any) {
+            const typingEl = document.getElementById('doom-marine-typing');
+            if (typingEl) typingEl.remove();
+            addMarineMessage('SYSTEM', `Feeds disrupted: ${error.message || 'connection lost'}`, '#ff0000');
+            playRetroSound('grunt');
+        } finally {
+            chatInput.disabled = false;
+            chatSend.disabled = false;
+            chatInput.focus();
+        }
+    };
+
+    chatSend.onclick = sendMarineAiMessage;
+    chatInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            sendMarineAiMessage();
+        }
+    };
 }

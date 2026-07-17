@@ -81,6 +81,7 @@
           <span class="window-title">My Gemtop</span>
           <div class="window-controls">
             <div class="window-minimize window-control-button">−</div>
+            <div class="window-maximize window-control-button">□</div>
             <div class="window-close window-control-button">✕</div>
           </div>
         </div>
@@ -106,6 +107,7 @@
           <span class="window-title">Chrome</span>
           <div class="window-controls">
             <div class="window-minimize window-control-button">−</div>
+            <div class="window-maximize window-control-button">□</div>
             <div class="window-close window-control-button">✕</div>
           </div>
         </div>
@@ -140,6 +142,7 @@
           <span class="window-title">GemNotes</span>
           <div class="window-controls">
             <div class="window-minimize window-control-button">−</div>
+            <div class="window-maximize window-control-button">□</div>
             <div class="window-close window-control-button">✕</div>
           </div>
         </div>
@@ -167,6 +170,7 @@
           <span class="window-title">GemPaint</span>
           <div class="window-controls">
             <div class="window-minimize window-control-button">−</div>
+            <div class="window-maximize window-control-button">□</div>
             <div class="window-close window-control-button">✕</div>
           </div>
         </div>
@@ -225,15 +229,79 @@
         </div>
       </div>
 
-      <div class="window resizable" id="doom">
+      <div class="window resizable" id="doom" style="width: 820px; height: 520px;">
         <div class="window-titlebar">
           <span class="window-title">Doom II</span>
           <div class="window-controls">
             <div class="window-minimize window-control-button">−</div>
+            <div class="window-maximize window-control-button">□</div>
             <div class="window-close window-control-button">✕</div>
           </div>
         </div>
-        <div class="window-content" id="doom-content">
+        <div class="window-content" id="doom-content" style="display: flex; flex-direction: row; background-color: #0c0c0c; margin: 0; padding: 0; border: none; overflow: hidden;">
+          <!-- Left side: Game Screen -->
+          <div id="doom-game-container" style="flex: 1; height: 100%; background-color: black; position: relative; border-right: 2px ridge #330000;">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #ff0000; font-family: monospace; font-size: 0.9rem;">
+              <p>LOADING SYSTEM...</p>
+              <p>DOOM II ENGINE READY</p>
+            </div>
+          </div>
+          
+          <!-- Right side: Tactical Dashboard -->
+          <div id="doom-sidebar" style="width: 280px; height: 100%; display: flex; flex-direction: column; background-color: #050505; box-sizing: border-box; padding: 8px; border-left: 2px solid #330000; overflow-y: auto; flex-shrink: 0;">
+            <div style="background-color: #330000; color: #ff3333; font-weight: bold; padding: 4px; font-size: 0.75rem; text-align: center; border: 1px solid #ff0000; margin-bottom: 8px; letter-spacing: 1px; font-family: monospace;">
+              TACTICAL COMMAND
+            </div>
+            
+            <!-- Companion Chat -->
+            <div style="display: flex; flex-direction: column; flex-grow: 1; min-height: 160px; border: 1px inset #550000; background-color: #020202; margin-bottom: 8px;">
+              <div style="font-size: 0.65rem; color: #ff6666; border-bottom: 1px solid #330000; padding: 3px; font-weight: bold; display: flex; justify-content: space-between; background-color: #111; font-family: monospace;">
+                <span>COMPANION: MARINE-AI</span>
+                <span style="color: #00ff00;">● ONLINE</span>
+              </div>
+              <div id="doom-chat-history" style="flex-grow: 1; padding: 5px; overflow-y: auto; font-size: 0.7rem; color: #00ff00; display: flex; flex-direction: column; gap: 4px; max-height: 180px; font-family: monospace;">
+                <p style="color: #888; font-style: italic; margin: 0;">Marine AI online. Ask me about levels, secrets, monsters, or cheat codes!</p>
+              </div>
+              <div style="display: flex; border-top: 1px solid #330000; background-color: #111;">
+                <input id="doom-chat-input" type="text" placeholder="Type here..." style="flex-grow: 1; background: black; border: none; color: #00ff00; padding: 4px; font-size: 0.7rem; outline: none; font-family: monospace;" />
+                <button id="doom-chat-send" style="background-color: #330000; color: #ff0000; border: none; padding: 0 8px; font-size: 0.7rem; cursor: pointer; font-weight: bold; border-left: 1px solid #550000; font-family: monospace;">SEND</button>
+              </div>
+            </div>
+
+            <!-- Soundboard -->
+            <div style="margin-bottom: 8px; display: flex; flex-direction: column;">
+              <div style="font-size: 0.7rem; color: #ff6666; font-weight: bold; margin-bottom: 4px; font-family: monospace;">MARINE SOUNDBOARD</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                <button class="doom-sound-btn" data-sound="shotgun" style="background-color: #220000; border: 1px solid #ff0000; color: #ff3333; font-size: 0.65rem; padding: 4px; cursor: pointer; text-align: center; font-weight: bold; font-family: monospace;">💥 SHOTGUN</button>
+                <button class="doom-sound-btn" data-sound="secret" style="background-color: #220000; border: 1px solid #ff0000; color: #ff3333; font-size: 0.65rem; padding: 4px; cursor: pointer; text-align: center; font-weight: bold; font-family: monospace;">🔑 SECRET</button>
+                <button class="doom-sound-btn" data-sound="pickup" style="background-color: #220000; border: 1px solid #ff0000; color: #ff3333; font-size: 0.65rem; padding: 4px; cursor: pointer; text-align: center; font-weight: bold; font-family: monospace;">💊 PICKUP</button>
+                <button class="doom-sound-btn" data-sound="grunt" style="background-color: #220000; border: 1px solid #ff0000; color: #ff3333; font-size: 0.65rem; padding: 4px; cursor: pointer; text-align: center; font-weight: bold; font-family: monospace;">💀 OOF!</button>
+              </div>
+            </div>
+
+            <!-- Cheat Codes -->
+            <div>
+              <div style="font-size: 0.7rem; color: #ff6666; font-weight: bold; margin-bottom: 4px; font-family: monospace;">CHEAT CODES (CLIPBOARD)</div>
+              <div style="display: flex; flex-direction: column; gap: 3px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; background-color: #111; padding: 2px 4px; border: 1px solid #330000; font-size: 0.65rem;">
+                  <span style="color: #ffff00; font-weight: bold;">IDDQD</span>
+                  <span style="color: #888; font-family: monospace;">God Mode</span>
+                  <button class="doom-cheat-btn" data-cheat="IDDQD" style="background: #330000; border: 1px solid #ff3333; color: #ff3333; padding: 1px 4px; cursor: pointer; font-size: 0.6rem; font-weight: bold; font-family: monospace;">COPY</button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; background-color: #111; padding: 2px 4px; border: 1px solid #330000; font-size: 0.65rem;">
+                  <span style="color: #ffff00; font-weight: bold;">IDKFA</span>
+                  <span style="color: #888; font-family: monospace;">All Weapons</span>
+                  <button class="doom-cheat-btn" data-cheat="IDKFA" style="background: #330000; border: 1px solid #ff3333; color: #ff3333; padding: 1px 4px; cursor: pointer; font-size: 0.6rem; font-weight: bold; font-family: monospace;">COPY</button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; background-color: #111; padding: 2px 4px; border: 1px solid #330000; font-size: 0.65rem;">
+                  <span style="color: #ffff00; font-weight: bold;">IDCLIP</span>
+                  <span style="color: #888; font-family: monospace;">No Clip</span>
+                  <button class="doom-cheat-btn" data-cheat="IDCLIP" style="background: #330000; border: 1px solid #ff3333; color: #ff3333; padding: 1px 4px; cursor: pointer; font-size: 0.6rem; font-weight: bold; font-family: monospace;">COPY</button>
+                </div>
+              </div>
+              <div id="doom-status-message" style="font-size: 0.6rem; color: #00ff00; margin-top: 4px; min-height: 12px; text-align: center; font-style: italic; font-family: monospace;"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -242,6 +310,7 @@
           <span class="window-title">Gemini App</span>
           <div class="window-controls">
             <div class="window-minimize window-control-button">−</div>
+            <div class="window-maximize window-control-button">□</div>
             <div class="window-close window-control-button">✕</div>
           </div>
         </div>
@@ -260,6 +329,7 @@
           <span class="window-title">GemSweeper</span>
           <div class="window-controls">
             <div class="window-minimize window-control-button">−</div>
+            <div class="window-maximize window-control-button">□</div>
             <div class="window-close window-control-button">✕</div>
           </div>
         </div>
@@ -294,6 +364,7 @@
           <span class="window-title" id="image-viewer-title">Image Viewer</span>
           <div class="window-controls">
             <div class="window-minimize window-control-button">−</div>
+            <div class="window-maximize window-control-button">□</div>
             <div class="window-close window-control-button">✕</div>
           </div>
         </div>
@@ -322,6 +393,7 @@
           <span class="window-title">GemPlayer</span>
           <div class="window-controls">
             <div class="window-minimize window-control-button">−</div>
+            <div class="window-maximize window-control-button">□</div>
             <div class="window-close window-control-button">✕</div>
           </div>
         </div>
@@ -369,10 +441,10 @@
       <div id="taskbar">
         <button id="start-button">
           <img
-            src="https://storage.googleapis.com/gemini-95-icons/start-gemini.png"
+            src="https://win98icons.alexmeub.com/icons/png/windows-0.png"
             alt="Start"
-            style="width: 80px; height: 70px"
           />
+          <span>Start</span>
         </button>
         <div id="taskbar-apps">
         </div>

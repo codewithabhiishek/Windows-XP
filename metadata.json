@@ -2,5 +2,5 @@
   "name": "Remix: Gemini 95",
   "description": "Explore a retro OS that brings back nostalgic memories with an AI twist.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

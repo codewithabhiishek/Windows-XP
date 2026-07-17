@@ -1077,3 +1077,13 @@ body {
     margin: 0;
     border: none;
 }
+
+/* Maximized Window Style */
+.window.maximized {
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: calc(100vh - 36px) !important;
+  resize: none !important;
+}
+

@@ -1,20 +1,41 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# 💾 Windows XP / 95 (Gemini 95) Desktop Simulator
 
-# Run and deploy your AI Studio app
+An interactive, nostalgia-fueled simulation of classic operating systems (Windows 95/XP) built with **TypeScript**, **Tailwind CSS**, and **ESM modules**. This environment features draggable windows, a start menu taskbar, classic retro applications, and interactive integrations powered by **Gemini AI**.
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/5e475e9d-ce48-444f-ad64-e01243b0de2c
+## 🖥️ Active Applications
 
-## Run Locally
+*   **🎨 GemPaint:** A pixel art canvas drawer. Features active drawing tools and an automated **Gemini AI Art Critic** that reviews and critiques your drawings in real-time.
+*   **📝 GemNotes:** A fully functional rich text notepad with an embedded Gemini helper that assists in text expansion and brainstorming.
+*   **💣 Minesweeper:** The authentic, logic-based minefield grid game with custom difficulty selectors and elapsed timer tracking.
+*   **😈 Doom II:** An emulated, classic DOS-run session of Doom II directly inside a draggable desktop window.
+*   **🎵 GemPlayer:** A retro Winamp-styled media player for loading and playing YouTube video links.
+*   **🌐 Chrome Browser:** A sandboxed in-window web browser emulator.
+*   **📂 My Gemtop:** A retro filesystem explorer recreating standard drives and directories.
 
-**Prerequisites:**  Node.js
+---
 
+## ⚙️ Core Technical Architecture
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+*   **Window Manager:** A custom, absolute-positioning z-index coordinate manager implemented in pure TypeScript. It handles smooth dragging, double-click maximization, minimize/restore animation flows, and focus elevation.
+*   **Modular Styling:** Handled via Tailwind CSS for the classic pixel-perfect gray bevels, system fonts, and 3D industrial borders.
+*   **Module Bundling:** Configured via Vite + TypeScript, deploying optimized ESM build assets.
+
+---
+
+## 🛠️ Running Locally
+
+### Prerequisites
+*   Node.js (v18+)
+
+### Setup
+1.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+2.  **Start development server:**
+    ```bash
+    npm run dev
+    ```
+    Open the local server link in your browser: `http://localhost:3000`

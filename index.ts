@@ -926,9 +926,9 @@ function initMyComputer(windowElement: HTMLDivElement): void {
         const imageViewerImg = document.getElementById('image-viewer-img') as HTMLImageElement | null;
         const imageViewerTitle = document.getElementById('image-viewer-title') as HTMLSpanElement | null;
         if (!imageViewerWindow || !imageViewerImg || !imageViewerTitle) { alert("Image Viewer corrupted!"); return; }
-        imageViewerImg.src = 'https://storage.googleapis.com/gemini-95-icons/%40ammaar%2B%40olacombe.png';
-        imageViewerImg.alt = 'dontshowthistoanyone.jpg';
-        imageViewerTitle.textContent = 'dontshowthistoanyone.jpg - Image Viewer';
+        imageViewerImg.src = 'https://upload.wikimedia.org/wikipedia/commons/7/70/Bliss_%28Windows_XP%29.png';
+        imageViewerImg.alt = 'bliss.jpg';
+        imageViewerTitle.textContent = 'bliss.jpg - Image Viewer';
         openApp('imageViewer');
     });
     cDriveIcon.style.display = 'inline-flex'; cDriveContent.style.display = 'none';
@@ -1310,3 +1310,39 @@ function initDoomDashboard(): void {
         }
     };
 }
+
+function playClickSound(): void {
+    try {
+        // @ts-ignore
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+
+        osc.type = 'sine';
+        // A short high-pitched click pop
+        osc.frequency.setValueAtTime(1400, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.04);
+
+        gainNode.gain.setValueAtTime(0.04, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        osc.start();
+        osc.stop(ctx.currentTime + 0.04);
+    } catch (e) {
+        console.warn("Click audio context error:", e);
+    }
+}
+
+document.addEventListener('mousedown', (e) => {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    const isClickable = target.closest('button, a, .icon, .start-menu-item, .window-control-button, .window-icon, .doom-sound-btn, .doom-cheat-btn, .paint-color-swatch, .paint-size-button, .paint-clear-button, .minesweeper-cell');
+    if (isClickable) {
+        playClickSound();
+    }
+});

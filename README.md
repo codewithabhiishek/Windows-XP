@@ -2,6 +2,8 @@
 
 An interactive, nostalgia-fueled simulation of classic operating systems (Windows 95/XP) built with **TypeScript**, **Tailwind CSS**, and **ESM modules**. This environment features draggable windows, a start menu taskbar, classic retro applications, and interactive layout management.
 
+![Windows XP Desktop Simulator Screenshot](public/screenshot.png)
+
 ---
 
 ## 🖥️ Active Applications

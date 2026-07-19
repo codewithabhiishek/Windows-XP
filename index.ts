@@ -1413,6 +1413,39 @@ document.addEventListener('click', () => {
     }
 }, { once: true });
 
+let newIconCount = 1;
+function createNewDesktopIcon(type: 'folder' | 'file') {
+    const desktop = document.getElementById('desktop');
+    if (!desktop) return;
+
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'icon';
+    
+    let iconSrc = type === 'folder' ? 'https://win98icons.alexmeub.com/icons/png/directory_closed-4.png' : 'https://storage.googleapis.com/gemini-95-icons/GemNotes.png';
+    let title = type === 'folder' ? 'New Folder' : 'New Text Document';
+    
+    // Map to existing apps for functionality
+    iconDiv.dataset.app = type === 'folder' ? 'myComputer' : 'notepad';
+    
+    iconDiv.innerHTML = `<img src="${iconSrc}" alt="${title}"><span>${title}</span>`;
+    
+    // Add click event for opening
+    iconDiv.addEventListener('click', () => {
+        // @ts-ignore
+        if (typeof openApp === 'function') openApp(iconDiv.dataset.app!);
+    });
+
+    // Insert before the first window so it sits with other icons
+    const firstWindow = document.querySelector('.window');
+    if (firstWindow) {
+        desktop.insertBefore(iconDiv, firstWindow);
+    } else {
+        desktop.appendChild(iconDiv);
+    }
+    
+    newIconCount++;
+}
+
 // Context Menu Logic
 const contextMenu = document.getElementById('context-menu') as HTMLDivElement;
 const contextMenuList = document.getElementById('context-menu-list') as HTMLUListElement;
@@ -1454,13 +1487,18 @@ document.addEventListener('contextmenu', (e) => {
              const refreshItem = document.createElement('li'); refreshItem.innerText = 'Refresh';
              refreshItem.onclick = () => { window.location.reload(); };
              
-             const personalizeItem = document.createElement('li'); personalizeItem.innerText = 'Personalize';
-             personalizeItem.onclick = () => { alert("Personalize feature coming soon!"); hideContextMenu(); };
+             const div1 = document.createElement('li'); div1.className = 'context-menu-divider';
+             
+             const newFolderItem = document.createElement('li'); newFolderItem.innerText = 'New Folder';
+             newFolderItem.onclick = () => { createNewDesktopIcon('folder'); hideContextMenu(); };
+             
+             const newFileItem = document.createElement('li'); newFileItem.innerText = 'New Text Document';
+             newFileItem.onclick = () => { createNewDesktopIcon('file'); hideContextMenu(); };
              
              contextMenuList.appendChild(refreshItem);
-             const div = document.createElement('li'); div.className = 'context-menu-divider';
-             contextMenuList.appendChild(div);
-             contextMenuList.appendChild(personalizeItem);
+             contextMenuList.appendChild(div1);
+             contextMenuList.appendChild(newFolderItem);
+             contextMenuList.appendChild(newFileItem);
         }
     }
 });

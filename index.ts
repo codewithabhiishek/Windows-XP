@@ -3,6 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import '@tailwindcss/browser';
+import { inject } from '@vercel/analytics';
+
+inject();
+
 
 // Windows XP Desktop Simulator
 // An homage to an OS that inspired so many of us!

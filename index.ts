@@ -166,7 +166,7 @@ async function openApp(appName: string): Promise<void> {
     else if (appName === 'pinball' && !dosInstances['pinball']) {
         const pinballContainer = document.getElementById('pinball-container') as HTMLDivElement | null;
         if (pinballContainer) {
-            pinballContainer.innerHTML = '<iframe src="https://pinball.alula.me/" width="100%" height="100%" frameborder="0" scrolling="no" allow="autoplay; fullscreen; cross-origin-isolated; gamepad" style="border: none; width: 100%; height: 100%; display: block;"></iframe>';
+            pinballContainer.innerHTML = '<iframe src="/pinball/index.html" width="100%" height="100%" frameborder="0" scrolling="no" allow="autoplay; fullscreen; cross-origin-isolated; gamepad" style="border: none; width: 100%; height: 100%; display: block;"></iframe>';
             dosInstances['pinball'] = { initialized: true };
         }
     }
@@ -1521,7 +1521,6 @@ function playSound(type: keyof typeof SYSTEM_SOUNDS | string) {
 function triggerStartupSound() {
     if (!startupPlayed) {
         startupPlayed = true;
-        // Resume AudioContext if suspended (browser requirement)
         try {
             // @ts-ignore
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -1536,46 +1535,33 @@ function triggerStartupSound() {
     }
 }
 
-/** Initializes the authentic Windows XP Boot Splash screen */
-function initBootScreen(): void {
-    const bootScreen = document.getElementById('xp-boot-screen');
-    if (!bootScreen) return;
-
-    let hasStarted = false;
-    const startXP = () => {
-        if (hasStarted) return;
-        hasStarted = true;
-        bootScreen.classList.add('booted');
-        triggerStartupSound();
-        setTimeout(() => {
-            bootScreen.style.display = 'none';
-        }, 700);
-    };
-
-    bootScreen.addEventListener('click', startXP);
-    document.addEventListener('pointerdown', startXP, { once: true });
-    document.addEventListener('keydown', startXP, { once: true });
-
-    // Auto-boot after 2.8s if no click, fading smoothly to desktop
-    setTimeout(() => {
-        if (!hasStarted) {
-            startXP();
-        }
-    }, 2800);
-}
-
-// Also attempt immediate play on page load (if browser policy allows)
-window.addEventListener('DOMContentLoaded', () => {
+// Attempt immediate playback on load
+function startImmediateAudio() {
     try {
-        const testAudio = new Audio(SYSTEM_SOUNDS.startup);
-        testAudio.volume = masterVolume;
-        testAudio.play().then(() => {
+        const audio = new Audio(SYSTEM_SOUNDS.startup);
+        audio.volume = masterVolume;
+        audio.play().then(() => {
             startupPlayed = true;
         }).catch(() => {
-            // Expected in browsers with strict autoplay policies; boot screen click will trigger it
+            // Browser autoplay policy blocked 0-interaction audio; listen for any first movement
+            const triggerOnce = () => {
+                triggerStartupSound();
+                ['pointerdown', 'pointermove', 'mousemove', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+                    document.removeEventListener(evt, triggerOnce);
+                });
+            };
+            ['pointerdown', 'pointermove', 'mousemove', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+                document.addEventListener(evt, triggerOnce, { once: true, passive: true });
+            });
         });
     } catch(e) {}
-});
+}
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    startImmediateAudio();
+} else {
+    window.addEventListener('DOMContentLoaded', startImmediateAudio);
+}
 
 /** Initialize live digital system tray clock */
 function initSystemClock(): void {
@@ -1655,7 +1641,6 @@ function initVolumeMixer(): void {
     }
 }
 
-initBootScreen();
 initSystemClock();
 initVolumeMixer();
 

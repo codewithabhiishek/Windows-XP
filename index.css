@@ -1169,3 +1169,137 @@ body {
   color: white;
 }
 
+/* System Tray */
+#system-tray {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  margin-left: auto;
+  border-top: 1px solid #808080;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #FFFFFF;
+  border-bottom: 1px solid #FFFFFF;
+  background-color: #C0C0C0;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.tray-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 1px 3px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  line-height: 1;
+}
+
+.tray-icon-btn:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.tray-icon-btn:active {
+  transform: translateY(1px);
+}
+
+.system-tray-clock {
+  font-family: "Tahoma", "Inter", sans-serif;
+  font-size: 11px;
+  color: #000;
+  font-weight: normal;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Volume Control Popup */
+.volume-popup {
+  position: fixed;
+  bottom: 42px;
+  right: 10px;
+  width: 140px;
+  background-color: #ECE9D8;
+  border: 2px solid #0054E3;
+  border-radius: 4px 4px 0 0;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  font-family: "Tahoma", "Inter", sans-serif;
+}
+
+.volume-popup-titlebar {
+  background: linear-gradient(180deg, #0A246A 0%, #A6CAF0 100%);
+  color: white;
+  padding: 2px 5px;
+  font-size: 11px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.volume-popup-close-btn {
+  background: #c75050;
+  border: 1px solid #fff;
+  color: white;
+  font-size: 9px;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.volume-popup-close-btn:hover {
+  background: #e81123;
+}
+
+.volume-popup-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.volume-slider-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.volume-slider-label {
+  font-size: 10px;
+  color: #444;
+}
+
+.volume-slider {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 24px;
+  height: 100px;
+  cursor: pointer;
+}
+
+.volume-mute-wrapper {
+  border-top: 1px solid #ACA899;
+  padding-top: 6px;
+  width: 100%;
+  text-align: center;
+}
+
+.volume-mute-label {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+}
+

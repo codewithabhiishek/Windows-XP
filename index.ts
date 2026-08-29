@@ -128,6 +128,7 @@ async function openApp(appName: string): Promise<void> {
             case 'mediaPlayer': iconSrc = 'https://storage.googleapis.com/gemini-95-icons/ytmediaplayer.png'; title = 'Media Player'; break;
             case 'calculator': iconSrc = 'https://win98icons.alexmeub.com/icons/png/calculator-1.png'; title = 'Calculator'; break;
             case 'recycleBin': iconSrc = 'https://win98icons.alexmeub.com/icons/png/recycle_bin_empty-4.png'; title = 'Recycle Bin'; break;
+            case 'pinball': iconSrc = 'https://win98icons.alexmeub.com/icons/png/game_pinball-0.png'; title = '3D Pinball'; break;
          }
     }
 
@@ -161,6 +162,13 @@ async function openApp(appName: string): Promise<void> {
     }
     else if (appName === 'paint') {
         initSimplePaintApp(windowElement);
+    }
+    else if (appName === 'pinball' && !dosInstances['pinball']) {
+        const pinballContainer = document.getElementById('pinball-container') as HTMLDivElement | null;
+        if (pinballContainer) {
+            pinballContainer.innerHTML = '<iframe src="https://alula.github.io/SpaceCadetPinball/" width="100%" height="100%" frameborder="0" scrolling="no" allow="autoplay; gamepad" style="border: none; width: 100%; height: 100%; display: block;"></iframe>';
+            dosInstances['pinball'] = { initialized: true };
+        }
     }
     else if (appName === 'doom' && !dosInstances['doom']) {
         const doomGameContainer = document.getElementById('doom-game-container') as HTMLDivElement | null;
@@ -211,6 +219,15 @@ function closeApp(appName: string): void {
                     <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #ff0000; font-family: monospace; font-size: 0.9rem;">
                       <p>LOADING SYSTEM...</p>
                       <p>DOOM II ENGINE READY</p>
+                    </div>
+                `;
+            }
+        } else if (appName === 'pinball') {
+            const container = document.getElementById('pinball-container');
+            if (container) {
+                container.innerHTML = `
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #38bdf8; font-family: monospace; font-size: 0.9rem;">
+                      <p>LOADING 3D PINBALL: SPACE CADET...</p>
                     </div>
                 `;
             }
@@ -1392,30 +1409,220 @@ document.addEventListener('mousedown', (e) => {
     }
 });
 
-// --- NEW FEATURES ---
+// --- AUDIO SYSTEM & SYSTEM TRAY ---
 
-// Audio System
-const SYSTEM_SOUNDS = {
-    startup: 'https://win98icons.alexmeub.com/audio/startup.mp3',
-    error: 'https://win98icons.alexmeub.com/audio/chord.wav',
+let masterVolume = 0.8;
+let isMuted = false;
+let startupPlayed = false;
+
+const SYSTEM_SOUNDS: Record<string, string> = {
+    startup: '/sounds/startup.mp3',
+    error: '/sounds/chord.wav',
     open: 'https://win98icons.alexmeub.com/audio/click.wav',
     close: 'https://win98icons.alexmeub.com/audio/click.wav',
-    emptyBin: 'https://win98icons.alexmeub.com/audio/empty.wav'
+    emptyBin: 'https://win98icons.alexmeub.com/audio/empty.wav',
+    ding: 'https://win98icons.alexmeub.com/audio/ding.wav'
 };
-let startupPlayed = false;
-function playSound(type: keyof typeof SYSTEM_SOUNDS) {
+
+/** Web Audio API Synthesizer fallback for reliable retro sound effects */
+function playSynthSound(type: string): void {
+    if (isMuted || masterVolume <= 0) return;
     try {
-        const audio = new Audio(SYSTEM_SOUNDS[type]);
-        audio.play().catch(e => console.warn("Audio play blocked", e));
-    } catch(e) {}
+        // @ts-ignore
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const effectiveVol = masterVolume;
+
+        if (type === 'open' || type === 'close' || type === 'click') {
+            // Crisp Windows XP Explorer click / navigation tick
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1600, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.025);
+            gain.gain.setValueAtTime(effectiveVol * 0.25, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.025);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.03);
+        } else if (type === 'error' || type === 'chord') {
+            // Windows XP chord error sound
+            const freqs = [261.63, 329.63, 392.00, 523.25]; // C chord
+            freqs.forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                gain.gain.setValueAtTime((effectiveVol * 0.15) / freqs.length, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.52);
+            });
+        } else if (type === 'ding') {
+            // Windows XP Crystal Bell Ding
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(740, ctx.currentTime);
+            gain.gain.setValueAtTime(effectiveVol * 0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.62);
+        } else if (type === 'emptyBin') {
+            // Paper crumple crunch noise
+            const bufferSize = ctx.sampleRate * 0.25;
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.08));
+            }
+            const noise = ctx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(1800, ctx.currentTime);
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(effectiveVol * 0.35, ctx.currentTime);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+            noise.start();
+        }
+    } catch (e) {
+        console.warn("Synth audio error", e);
+    }
 }
 
-document.addEventListener('click', () => {
-    if (!startupPlayed) {
-        playSound('startup');
-        startupPlayed = true;
+function playSound(type: keyof typeof SYSTEM_SOUNDS | string) {
+    if (isMuted || masterVolume <= 0) return;
+    try {
+        const soundSrc = SYSTEM_SOUNDS[type];
+        if (soundSrc) {
+            const audio = new Audio(soundSrc);
+            audio.volume = masterVolume;
+            audio.play().catch(() => {
+                // If audio element blocked or failed, use synth fallback
+                playSynthSound(type);
+            });
+        } else {
+            playSynthSound(type);
+        }
+    } catch (e) {
+        playSynthSound(type);
     }
-}, { once: true });
+}
+
+function triggerStartupSound() {
+    if (!startupPlayed) {
+        startupPlayed = true;
+        playSound('startup');
+    }
+}
+
+// Play startup sound on first user gesture
+document.addEventListener('click', triggerStartupSound, { once: true });
+document.addEventListener('pointerdown', triggerStartupSound, { once: true });
+document.addEventListener('keydown', triggerStartupSound, { once: true });
+
+// Also attempt immediate play on page load (if browser policy allows)
+window.addEventListener('DOMContentLoaded', () => {
+    try {
+        const testAudio = new Audio(SYSTEM_SOUNDS.startup);
+        testAudio.volume = masterVolume;
+        testAudio.play().then(() => {
+            startupPlayed = true;
+        }).catch(() => {
+            // Expected in browsers with strict autoplay policies; will play on first click
+        });
+    } catch(e) {}
+});
+
+/** Initialize live digital system tray clock */
+function initSystemClock(): void {
+    const clockEl = document.getElementById('system-clock');
+    if (!clockEl) return;
+    const updateTime = () => {
+        const now = new Date();
+        clockEl.textContent = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    };
+    updateTime();
+    setInterval(updateTime, 1000);
+}
+
+/** Initialize interactive Windows XP Volume Control Popup */
+function initVolumeMixer(): void {
+    const volumeBtn = document.getElementById('tray-volume-btn');
+    const volumePopup = document.getElementById('volume-popup');
+    const volumeClose = document.getElementById('volume-popup-close');
+    const volumeSlider = document.getElementById('master-volume-slider') as HTMLInputElement | null;
+    const muteCheckbox = document.getElementById('master-volume-mute') as HTMLInputElement | null;
+    const volumeIcon = document.getElementById('tray-volume-icon');
+
+    if (!volumeBtn || !volumePopup) return;
+
+    volumeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isShown = volumePopup.style.display === 'block';
+        volumePopup.style.display = isShown ? 'none' : 'block';
+    });
+
+    if (volumeClose) {
+        volumeClose.addEventListener('click', () => {
+            volumePopup.style.display = 'none';
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!volumePopup.contains(e.target as Node) && e.target !== volumeBtn && !volumeBtn.contains(e.target as Node)) {
+            volumePopup.style.display = 'none';
+        }
+    });
+
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', () => {
+            const val = parseInt(volumeSlider.value, 10);
+            masterVolume = val / 100;
+            if (isMuted && val > 0) {
+                isMuted = false;
+                if (muteCheckbox) muteCheckbox.checked = false;
+            }
+            updateVolumeIcon();
+        });
+
+        volumeSlider.addEventListener('change', () => {
+            playSound('ding');
+        });
+    }
+
+    if (muteCheckbox) {
+        muteCheckbox.addEventListener('change', () => {
+            isMuted = muteCheckbox.checked;
+            updateVolumeIcon();
+        });
+    }
+
+    function updateVolumeIcon() {
+        if (!volumeIcon) return;
+        if (isMuted || masterVolume === 0) {
+            volumeIcon.textContent = '🔇';
+        } else if (masterVolume < 0.4) {
+            volumeIcon.textContent = '🔈';
+        } else if (masterVolume < 0.75) {
+            volumeIcon.textContent = '🔉';
+        } else {
+            volumeIcon.textContent = '🔊';
+        }
+    }
+}
+
+initSystemClock();
+initVolumeMixer();
 
 let newIconCount = 1;
 function createNewDesktopIcon(type: 'folder' | 'file') {

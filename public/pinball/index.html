@@ -46,39 +46,6 @@
       overflow: hidden;
     }
     
-    /* Top Bar Controls */
-    .top-controls {
-      position: absolute;
-      top: 6px;
-      right: 8px;
-      display: flex;
-      gap: 6px;
-      z-index: 35;
-    }
-    .top-mute-btn {
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid rgba(56, 189, 248, 0.5);
-      color: #38bdf8;
-      font-family: 'Segoe UI', Tahoma, sans-serif;
-      font-size: 11px;
-      font-weight: bold;
-      padding: 3px 9px;
-      border-radius: 4px;
-      cursor: pointer;
-      backdrop-filter: blur(4px);
-      transition: all 0.15s;
-    }
-    .top-mute-btn:hover {
-      background: rgba(56, 189, 248, 0.25);
-      color: #ffffff;
-      border-color: #38bdf8;
-    }
-    .top-mute-btn.muted {
-      background: rgba(220, 38, 38, 0.85);
-      border-color: #ef4444;
-      color: #ffffff;
-    }
-
     .controls-hint {
       position: absolute;
       bottom: 6px;
@@ -109,50 +76,9 @@
       font-family: monospace;
       margin: 0 2px;
     }
-    
-    /* Touch / Click On-Screen Flipper Controls */
-    .touch-controls {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 25;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      padding: 10px;
-    }
-    .touch-btn {
-      pointer-events: auto;
-      background: rgba(30, 41, 59, 0.75);
-      border: 1.5px solid rgba(56, 189, 248, 0.5);
-      color: #38bdf8;
-      font-family: monospace;
-      font-size: 12px;
-      font-weight: bold;
-      padding: 8px 14px;
-      border-radius: 8px;
-      cursor: pointer;
-      user-select: none;
-      backdrop-filter: blur(4px);
-      transition: all 0.1s;
-      opacity: 0.8;
-    }
-    .touch-btn:hover {
-      opacity: 1;
-      background: rgba(56, 189, 248, 0.25);
-    }
-    .touch-btn:active {
-      transform: scale(0.95);
-      background: rgba(56, 189, 248, 0.45);
-      border-color: #38bdf8;
-    }
   </style>
 </head>
 <body>
-  <div class="top-controls">
-    <button id="top-mute-btn" class="top-mute-btn" title="Toggle Game Sound (Press M)">🔊 Sound: ON</button>
-  </div>
-
   <div id="status">
     <div id="status-text">Starting 3D Pinball...</div>
     <progress id="progress" value="0" max="100" hidden></progress>
@@ -160,13 +86,6 @@
   
   <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
   
-  <!-- Interactive touch/click flipper buttons -->
-  <div class="touch-controls" id="touch-controls">
-    <button class="touch-btn" id="btn-left-flipper" title="Left Flipper (← / Z / Shift)">◂ Left Flipper</button>
-    <button class="touch-btn" id="btn-plunger" title="Pull & Release Plunger (Space / ↓)">⚡ Launch Ball</button>
-    <button class="touch-btn" id="btn-right-flipper" title="Right Flipper (→ / / / Shift)">Right Flipper ▸</button>
-  </div>
-
   <div id="hint" class="controls-hint">
     <span>Left: <span class="key-badge">←</span> or <span class="key-badge">Z</span></span>
     <span style="margin: 0 6px; opacity: 0.4;">|</span>
@@ -184,11 +103,9 @@
     var canvasElement = document.getElementById("canvas");
     var hintElement = document.getElementById("hint");
     var statusContainer = document.getElementById("status");
-    var topBtn = document.getElementById('top-mute-btn');
 
-    function toggleGameMute() {
-      isAudioMuted = !isAudioMuted;
-      
+    function setMuteState(muted) {
+      isAudioMuted = muted;
       try {
         if (window.Module && window.Module.SDL2 && window.Module.SDL2.audioContext) {
           if (isAudioMuted) {
@@ -199,36 +116,21 @@
         }
       } catch(e){}
 
-      if (topBtn) {
-        if (isAudioMuted) {
-          topBtn.textContent = '🔇 Muted';
-          topBtn.classList.add('muted');
-        } else {
-          topBtn.textContent = '🔊 Sound: ON';
-          topBtn.classList.remove('muted');
-        }
-      }
-
       try {
         window.parent.postMessage({ type: 'PINBALL_MUTE_STATE', muted: isAudioMuted }, '*');
       } catch(e){}
     }
 
-    if (topBtn) {
-      topBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        toggleGameMute();
-      });
+    function toggleGameMute() {
+      setMuteState(!isAudioMuted);
     }
 
-    // Listen for mute messages from parent Windows XP shell
+    // Listen for mute messages from parent Windows XP titlebar
     window.addEventListener('message', function(e) {
       if (e.data && e.data.action === 'toggleMute') {
         toggleGameMute();
       } else if (e.data && e.data.action === 'setMute') {
-        if (isAudioMuted !== Boolean(e.data.muted)) {
-          toggleGameMute();
-        }
+        setMuteState(Boolean(e.data.muted));
       }
     });
 
@@ -300,9 +202,8 @@
       if (canvasElement) canvasElement.focus();
     });
 
-    // --- KEYBOARD & TOUCH MAPPING BRIDGE ---
+    // --- SAFE NON-RECURSIVE KEYBOARD BRIDGE ---
     function sendKey(type, code, key, keyCode) {
-      var target = canvasElement || window;
       var event = new KeyboardEvent(type, {
         code: code,
         key: key,
@@ -311,14 +212,18 @@
         bubbles: true,
         cancelable: true
       });
-      target.dispatchEvent(event);
-      window.dispatchEvent(event);
-      document.dispatchEvent(event);
+      // Flag event as synthetic to prevent ANY re-interception or loop
+      event._bridgeEvent = true;
+      if (canvasElement) {
+        canvasElement.dispatchEvent(event);
+      } else {
+        window.dispatchEvent(event);
+      }
     }
 
-    // Intercept Arrow keys, Shift keys, A/D, M/Period to guarantee flippers & mute work
+    // Intercept ONLY non-standard helper keys (Arrow keys, Shift, A/D, Enter)
     window.addEventListener('keydown', function(e) {
-      if (e.repeat) return;
+      if (e._bridgeEvent || e.repeat) return;
       var k = e.key;
       var c = e.code;
 
@@ -328,29 +233,37 @@
         return;
       }
 
+      // Map Left Arrow / A / Left Shift -> Z
       if (k === 'ArrowLeft' || c === 'ArrowLeft' || c === 'ShiftLeft' || k === 'a' || k === 'A') {
         sendKey('keydown', 'KeyZ', 'z', 90);
         e.preventDefault();
-      } else if (k === 'ArrowRight' || c === 'ArrowRight' || c === 'ShiftRight' || k === 'd' || k === 'D' || k === '.' || k === '/' || c === 'Slash') {
+      } 
+      // Map Right Arrow / D / Right Shift / Period -> /
+      else if (k === 'ArrowRight' || c === 'ArrowRight' || c === 'ShiftRight' || k === 'd' || k === 'D' || k === '.') {
         sendKey('keydown', 'Slash', '/', 191);
         e.preventDefault();
-      } else if (k === 'ArrowDown' || c === 'ArrowDown' || k === 'Enter') {
+      } 
+      // Map Down Arrow / Enter -> Space
+      else if (k === 'ArrowDown' || c === 'ArrowDown' || k === 'Enter') {
         sendKey('keydown', 'Space', ' ', 32);
         e.preventDefault();
-      } else if (k === 'r' || k === 'R') {
+      } 
+      // Map R -> F2
+      else if (k === 'r' || k === 'R') {
         sendKey('keydown', 'F2', 'F2', 113);
         e.preventDefault();
       }
-    }, true);
+    }, false);
 
     window.addEventListener('keyup', function(e) {
+      if (e._bridgeEvent) return;
       var k = e.key;
       var c = e.code;
 
       if (k === 'ArrowLeft' || c === 'ArrowLeft' || c === 'ShiftLeft' || k === 'a' || k === 'A') {
         sendKey('keyup', 'KeyZ', 'z', 90);
         e.preventDefault();
-      } else if (k === 'ArrowRight' || c === 'ArrowRight' || c === 'ShiftRight' || k === 'd' || k === 'D' || k === '.' || k === '/' || c === 'Slash') {
+      } else if (k === 'ArrowRight' || c === 'ArrowRight' || c === 'ShiftRight' || k === 'd' || k === 'D' || k === '.') {
         sendKey('keyup', 'Slash', '/', 191);
         e.preventDefault();
       } else if (k === 'ArrowDown' || c === 'ArrowDown' || k === 'Enter') {
@@ -360,44 +273,7 @@
         sendKey('keyup', 'F2', 'F2', 113);
         e.preventDefault();
       }
-    }, true);
-
-    // On-screen clickable buttons
-    var btnLeft = document.getElementById('btn-left-flipper');
-    var btnRight = document.getElementById('btn-right-flipper');
-    var btnPlunger = document.getElementById('btn-plunger');
-
-    function bindButton(btn, downCode, upCode, key, code, keyCode) {
-      if (!btn) return;
-      var isDown = false;
-      var triggerDown = function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!isDown) {
-          isDown = true;
-          sendKey('keydown', code, key, keyCode);
-        }
-      };
-      var triggerUp = function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (isDown) {
-          isDown = false;
-          sendKey('keyup', code, key, keyCode);
-        }
-      };
-
-      btn.addEventListener('mousedown', triggerDown);
-      btn.addEventListener('mouseup', triggerUp);
-      btn.addEventListener('mouseleave', triggerUp);
-      btn.addEventListener('touchstart', triggerDown, { passive: false });
-      btn.addEventListener('touchend', triggerUp, { passive: false });
-      btn.addEventListener('touchcancel', triggerUp, { passive: false });
-    }
-
-    bindButton(btnLeft, 'keydown', 'keyup', 'z', 'KeyZ', 90);
-    bindButton(btnRight, 'keydown', 'keyup', '/', 'Slash', 191);
-    bindButton(btnPlunger, 'keydown', 'keyup', ' ', 'Space', 32);
+    }, false);
   </script>
   <script async src="/pinball/SpaceCadetPinball.js"></script>
 </body>

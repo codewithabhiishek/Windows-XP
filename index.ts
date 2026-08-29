@@ -128,7 +128,7 @@ async function openApp(appName: string): Promise<void> {
             case 'mediaPlayer': iconSrc = 'https://storage.googleapis.com/gemini-95-icons/ytmediaplayer.png'; title = 'Media Player'; break;
             case 'calculator': iconSrc = 'https://win98icons.alexmeub.com/icons/png/calculator-1.png'; title = 'Calculator'; break;
             case 'recycleBin': iconSrc = 'https://win98icons.alexmeub.com/icons/png/recycle_bin_empty-4.png'; title = 'Recycle Bin'; break;
-            case 'pinball': iconSrc = 'https://win98icons.alexmeub.com/icons/png/game_pinball-0.png'; title = '3D Pinball'; break;
+            case 'pinball': iconSrc = '/icons/pinball.png'; title = '3D Pinball'; break;
          }
     }
 
@@ -1497,25 +1497,34 @@ function triggerStartupSound() {
     playSound('startup');
 }
 
-// Attempt immediate playback on load
+// Attempt immediate Windows XP startup sound playback on website open
 function startImmediateAudio() {
     try {
         const audio = new Audio('/sounds/startup.mp3');
         audio.volume = masterVolume;
-        audio.play().then(() => {
-            startupPlayed = true;
-        }).catch(() => {
-            // If browser blocks 0-interaction audio, trigger on first user action
-            const onFirstInteraction = () => {
-                triggerStartupSound();
-                ['click', 'keydown', 'pointerdown', 'touchstart'].forEach(evt => {
-                    document.removeEventListener(evt, onFirstInteraction);
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                startupPlayed = true;
+            }).catch(() => {
+                // If browser autoplay policy requires interaction, trigger on the very first desktop hover/movement/touch
+                const onFirstDesktopActivity = () => {
+                    if (!startupPlayed) {
+                        triggerStartupSound();
+                    }
+                    const events = ['mousemove', 'pointermove', 'mouseenter', 'mouseover', 'wheel', 'scroll', 'mousedown', 'pointerdown', 'touchstart', 'click', 'keydown', 'focus'];
+                    events.forEach(evt => {
+                        window.removeEventListener(evt, onFirstDesktopActivity);
+                        document.removeEventListener(evt, onFirstDesktopActivity);
+                    });
+                };
+                const events = ['mousemove', 'pointermove', 'mouseenter', 'mouseover', 'wheel', 'scroll', 'mousedown', 'pointerdown', 'touchstart', 'click', 'keydown', 'focus'];
+                events.forEach(evt => {
+                    window.addEventListener(evt, onFirstDesktopActivity, { once: true, passive: true });
+                    document.addEventListener(evt, onFirstDesktopActivity, { once: true, passive: true });
                 });
-            };
-            ['click', 'keydown', 'pointerdown', 'touchstart'].forEach(evt => {
-                document.addEventListener(evt, onFirstInteraction, { once: true, passive: true });
             });
-        });
+        }
     } catch(e) {}
 }
 

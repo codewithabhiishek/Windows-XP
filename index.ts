@@ -1603,8 +1603,45 @@ function initVolumeMixer(): void {
     }
 }
 
+/** Initialize Pinball titlebar mute toggle */
+function initPinballAudioControls(): void {
+    const titlebarMute = document.getElementById('pinball-titlebar-mute');
+    if (!titlebarMute) return;
+
+    let isPinballMuted = false;
+    titlebarMute.addEventListener('click', (e) => {
+        e.stopPropagation();
+        isPinballMuted = !isPinballMuted;
+        const iframe = document.querySelector('#pinball-container iframe') as HTMLIFrameElement | null;
+        if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ action: 'setMute', muted: isPinballMuted }, '*');
+        }
+        if (isPinballMuted) {
+            titlebarMute.textContent = '🔇 Muted';
+            titlebarMute.classList.add('muted');
+        } else {
+            titlebarMute.textContent = '🔊 Mute';
+            titlebarMute.classList.remove('muted');
+        }
+    });
+
+    window.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'PINBALL_MUTE_STATE') {
+            isPinballMuted = Boolean(e.data.muted);
+            if (isPinballMuted) {
+                titlebarMute.textContent = '🔇 Muted';
+                titlebarMute.classList.add('muted');
+            } else {
+                titlebarMute.textContent = '🔊 Mute';
+                titlebarMute.classList.remove('muted');
+            }
+        }
+    });
+}
+
 initSystemClock();
 initVolumeMixer();
+initPinballAudioControls();
 
 let newIconCount = 1;
 function createNewDesktopIcon(type: 'folder' | 'file') {

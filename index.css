@@ -1303,4 +1303,29 @@ body {
   cursor: pointer;
 }
 
+.titlebar-mute-btn {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 1px 6px;
+  cursor: pointer;
+  margin-left: 6px;
+  transition: all 0.15s;
+}
+
+.titlebar-mute-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: #ffffff;
+}
+
+.titlebar-mute-btn.muted {
+  background: #dc2626;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+
 

@@ -74,7 +74,7 @@
       border-color: #38bdf8;
     }
     .top-mute-btn.muted {
-      background: rgba(220, 38, 38, 0.8);
+      background: rgba(220, 38, 38, 0.85);
       border-color: #ef4444;
       color: #ffffff;
     }
@@ -150,11 +150,11 @@
 </head>
 <body>
   <div class="top-controls">
-    <button id="top-mute-btn" class="top-mute-btn" title="Toggle Game Sound (Press S or M)">🔊 Sound: ON</button>
+    <button id="top-mute-btn" class="top-mute-btn" title="Toggle Game Sound (Press M)">🔊 Sound: ON</button>
   </div>
 
   <div id="status">
-    <div id="status-text">Loading 3D Pinball: Space Cadet...</div>
+    <div id="status-text">Starting 3D Pinball...</div>
     <progress id="progress" value="0" max="100" hidden></progress>
   </div>
   
@@ -179,52 +179,25 @@
 
   <script>
     var isAudioMuted = false;
-    var activeAudioContexts = [];
-
-    // Master AudioContext Interceptor to enable instantaneous mute / volume control
-    (function() {
-      // @ts-ignore
-      var OrigCtx = window.AudioContext || window.webkitAudioContext;
-      if (OrigCtx) {
-        var ProxyAudioCtx = function() {
-          var ctx = new OrigCtx();
-          activeAudioContexts.push(ctx);
-          if (isAudioMuted && ctx.state === 'running') {
-            try { ctx.suspend(); } catch(e){}
-          }
-          return ctx;
-        };
-        ProxyAudioCtx.prototype = OrigCtx.prototype;
-        // @ts-ignore
-        window.AudioContext = ProxyAudioCtx;
-        // @ts-ignore
-        if (window.webkitAudioContext) window.webkitAudioContext = ProxyAudioCtx;
-      }
-    })();
+    var statusText = document.getElementById("status-text");
+    var progressElement = document.getElementById("progress");
+    var canvasElement = document.getElementById("canvas");
+    var hintElement = document.getElementById("hint");
+    var statusContainer = document.getElementById("status");
+    var topBtn = document.getElementById('top-mute-btn');
 
     function toggleGameMute() {
       isAudioMuted = !isAudioMuted;
-      var topBtn = document.getElementById('top-mute-btn');
       
-      activeAudioContexts.forEach(function(ctx) {
-        try {
-          if (isAudioMuted) {
-            ctx.suspend();
-          } else {
-            ctx.resume();
-          }
-        } catch(e){}
-      });
-
-      if (window.Module && window.Module.SDL2 && window.Module.SDL2.audioContext) {
-        try {
+      try {
+        if (window.Module && window.Module.SDL2 && window.Module.SDL2.audioContext) {
           if (isAudioMuted) {
             window.Module.SDL2.audioContext.suspend();
           } else {
             window.Module.SDL2.audioContext.resume();
           }
-        } catch(e){}
-      }
+        }
+      } catch(e){}
 
       if (topBtn) {
         if (isAudioMuted) {
@@ -236,15 +209,13 @@
         }
       }
 
-      // Notify parent window if applicable
       try {
         window.parent.postMessage({ type: 'PINBALL_MUTE_STATE', muted: isAudioMuted }, '*');
       } catch(e){}
     }
 
-    var topMuteBtn = document.getElementById('top-mute-btn');
-    if (topMuteBtn) {
-      topMuteBtn.addEventListener('click', function(e) {
+    if (topBtn) {
+      topBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         toggleGameMute();
       });
@@ -261,12 +232,6 @@
       }
     });
 
-    var statusText = document.getElementById("status-text");
-    var progressElement = document.getElementById("progress");
-    var canvasElement = document.getElementById("canvas");
-    var hintElement = document.getElementById("hint");
-    var statusContainer = document.getElementById("status");
-
     var Module = {
       preRun: [],
       postRun: [
@@ -278,16 +243,18 @@
           if (statusContainer) {
             statusContainer.style.display = "none";
           }
+          if (isAudioMuted && window.Module && window.Module.SDL2 && window.Module.SDL2.audioContext) {
+            try { window.Module.SDL2.audioContext.suspend(); } catch(e){}
+          }
           setTimeout(function() {
             if (hintElement) hintElement.style.opacity = '0.35';
-          }, 9000);
+          }, 8000);
         }
       ],
       print: function(text) { console.log(text); },
-      printErr: function(text) { console.error(text); },
+      printErr: function(text) { console.warn(text); },
       canvas: (function() {
         canvasElement.addEventListener("webglcontextlost", function(e) {
-          alert("WebGL context lost. Please reload.");
           e.preventDefault();
         }, false);
         return canvasElement;
@@ -325,17 +292,8 @@
         Module.setStatus(left ? "Preparing... (" + (this.totalDependencies - left) + "/" + this.totalDependencies + ")" : "");
       },
       locateFile: function(path, prefix) {
-        if (path.endsWith(".wasm") || path.endsWith(".data")) {
-          return "https://pinball.alula.me/" + path;
-        }
-        return prefix + path;
+        return "/pinball/" + path;
       }
-    };
-
-    Module.setStatus("Downloading game data...");
-    window.onerror = function(err) {
-      console.error("Pinball error:", err);
-      if (statusText) statusText.innerText = "Error loading Pinball engine.";
     };
 
     window.addEventListener('click', function() {
@@ -364,7 +322,7 @@
       var k = e.key;
       var c = e.code;
 
-      if (k === 'm' || k === 'M' || k === 's' || k === 'S') {
+      if (k === 'm' || k === 'M') {
         toggleGameMute();
         e.preventDefault();
         return;
@@ -441,6 +399,6 @@
     bindButton(btnRight, 'keydown', 'keyup', '/', 'Slash', 191);
     bindButton(btnPlunger, 'keydown', 'keyup', ' ', 'Space', 32);
   </script>
-  <script async src="https://pinball.alula.me/SpaceCadetPinball.js"></script>
+  <script async src="/pinball/SpaceCadetPinball.js"></script>
 </body>
 </html>

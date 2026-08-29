@@ -971,7 +971,7 @@ function initMyComputer(windowElement: HTMLDivElement): void {
         const textarea = notepadWindow?.querySelector('.notepad-textarea') as HTMLTextAreaElement | null;
         const linkContainer = notepadWindow?.querySelector('#notepad-link-container') as HTMLDivElement | null;
         if (notepadWindow && textarea) {
-            textarea.value = `[ SYSTEM INFORMATION ]\n-----------------------------------------\nSYSTEM DEVELOPER: Abhishek (for fun)\nPORTFOLIO:        https://abhiishek-dev.vercel.app/\nYEAR OF ORIGIN:   1996 / 2026\n\nWARNING: Do not delete SYSTEM32 folder. \nSide effects include: BSOD, retro temporal loops, and extreme nostalgia.`;
+            textarea.value = `[ SYSTEM INFORMATION ]\n-----------------------------------------\nSYSTEM DEVELOPER: Abhishek (for fun)\nPORTFOLIO:        https://abhiishek.is-a.dev/\nYEAR OF ORIGIN:   1996 / 2026\n\nWARNING: Do not delete SYSTEM32 folder. \nSide effects include: BSOD, retro temporal loops, and extreme nostalgia.`;
             if (linkContainer) linkContainer.style.display = 'block';
             openApp('notepad');
         }

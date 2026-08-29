@@ -1373,58 +1373,14 @@ function initDoomDashboard(): void {
     };
 }
 
-function playClickSound(): void {
-    try {
-        // @ts-ignore
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
-        const ctx = new AudioCtx();
-        const osc = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-
-        osc.type = 'sine';
-        // A short high-pitched click pop
-        osc.frequency.setValueAtTime(1400, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.04);
-
-        gainNode.gain.setValueAtTime(0.04, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
-
-        osc.connect(gainNode);
-        gainNode.connect(ctx.destination);
-
-        osc.start();
-        osc.stop(ctx.currentTime + 0.04);
-    } catch (e) {
-        console.warn("Click audio context error:", e);
-    }
-}
-
-document.addEventListener('mousedown', (e) => {
-    const target = e.target as HTMLElement | null;
-    if (!target) return;
-    const isClickable = target.closest('button, a, .icon, .start-menu-item, .window-control-button, .window-icon, .doom-sound-btn, .doom-cheat-btn, .paint-color-swatch, .paint-size-button, .paint-clear-button, .minesweeper-cell');
-    if (isClickable) {
-        playClickSound();
-    }
-});
-
 // --- AUDIO SYSTEM & SYSTEM TRAY ---
 
 let masterVolume = 0.8;
 let isMuted = false;
 let startupPlayed = false;
+let lastSoundTime = 0;
 
-const SYSTEM_SOUNDS: Record<string, string> = {
-    startup: '/sounds/startup.mp3',
-    error: '/sounds/chord.wav',
-    open: 'https://win98icons.alexmeub.com/audio/click.wav',
-    close: 'https://win98icons.alexmeub.com/audio/click.wav',
-    emptyBin: 'https://win98icons.alexmeub.com/audio/empty.wav',
-    ding: 'https://win98icons.alexmeub.com/audio/ding.wav'
-};
-
-/** Web Audio API Synthesizer fallback for reliable retro sound effects */
+/** Web Audio API Synthesizer for instant, crystal-clear 0ms retro effects without network lag */
 function playSynthSound(type: string): void {
     if (isMuted || masterVolume <= 0) return;
     try {
@@ -1435,18 +1391,18 @@ function playSynthSound(type: string): void {
         const effectiveVol = masterVolume;
 
         if (type === 'open' || type === 'close' || type === 'click') {
-            // Crisp Windows XP Explorer click / navigation tick
+            // Single, crisp 15ms navigation tick
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(1600, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.025);
-            gain.gain.setValueAtTime(effectiveVol * 0.25, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.025);
+            osc.frequency.setValueAtTime(1800, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.015);
+            gain.gain.setValueAtTime(effectiveVol * 0.15, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.015);
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.start();
-            osc.stop(ctx.currentTime + 0.03);
+            osc.stop(ctx.currentTime + 0.018);
         } else if (type === 'error' || type === 'chord') {
             // Windows XP chord error sound
             const freqs = [261.63, 329.63, 392.00, 523.25]; // C chord
@@ -1456,11 +1412,11 @@ function playSynthSound(type: string): void {
                 osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
                 osc.frequency.setValueAtTime(freq, ctx.currentTime);
                 gain.gain.setValueAtTime((effectiveVol * 0.15) / freqs.length, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
                 osc.connect(gain);
                 gain.connect(ctx.destination);
                 osc.start();
-                osc.stop(ctx.currentTime + 0.52);
+                osc.stop(ctx.currentTime + 0.48);
             });
         } else if (type === 'ding') {
             // Windows XP Crystal Bell Ding
@@ -1468,19 +1424,19 @@ function playSynthSound(type: string): void {
             const gain = ctx.createGain();
             osc.type = 'sine';
             osc.frequency.setValueAtTime(740, ctx.currentTime);
-            gain.gain.setValueAtTime(effectiveVol * 0.3, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+            gain.gain.setValueAtTime(effectiveVol * 0.25, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.start();
-            osc.stop(ctx.currentTime + 0.62);
+            osc.stop(ctx.currentTime + 0.52);
         } else if (type === 'emptyBin') {
             // Paper crumple crunch noise
-            const bufferSize = ctx.sampleRate * 0.25;
+            const bufferSize = ctx.sampleRate * 0.2;
             const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) {
-                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.08));
+                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.06));
             }
             const noise = ctx.createBufferSource();
             noise.buffer = buffer;
@@ -1488,7 +1444,7 @@ function playSynthSound(type: string): void {
             filter.type = 'bandpass';
             filter.frequency.setValueAtTime(1800, ctx.currentTime);
             const gain = ctx.createGain();
-            gain.gain.setValueAtTime(effectiveVol * 0.35, ctx.currentTime);
+            gain.gain.setValueAtTime(effectiveVol * 0.3, ctx.currentTime);
             noise.connect(filter);
             filter.connect(gain);
             gain.connect(ctx.destination);
@@ -1499,59 +1455,65 @@ function playSynthSound(type: string): void {
     }
 }
 
-function playSound(type: keyof typeof SYSTEM_SOUNDS | string) {
+function playSound(type: string) {
     if (isMuted || masterVolume <= 0) return;
-    try {
-        const soundSrc = SYSTEM_SOUNDS[type];
-        if (soundSrc) {
-            const audio = new Audio(soundSrc);
+    
+    // Prevent rapid duplicate clicks within 50ms
+    const now = Date.now();
+    if (type !== 'startup' && now - lastSoundTime < 50) return;
+    lastSoundTime = now;
+
+    if (type === 'startup') {
+        try {
+            const audio = new Audio('/sounds/startup.mp3');
             audio.volume = masterVolume;
-            audio.play().catch(() => {
-                // If audio element blocked or failed, use synth fallback
-                playSynthSound(type);
-            });
-        } else {
-            playSynthSound(type);
+            audio.play().catch(() => {});
+        } catch(e) {}
+    } else if (type === 'error') {
+        try {
+            const audio = new Audio('/sounds/chord.wav');
+            audio.volume = masterVolume;
+            audio.play().catch(() => playSynthSound('error'));
+        } catch(e) {
+            playSynthSound('error');
         }
-    } catch (e) {
+    } else {
+        // Instant direct synthesis with zero network overhead for snappy navigation clicks
         playSynthSound(type);
     }
 }
 
 function triggerStartupSound() {
-    if (!startupPlayed) {
-        startupPlayed = true;
-        try {
-            // @ts-ignore
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (AudioCtx) {
-                const ctx = new AudioCtx();
-                if (ctx.state === 'suspended') {
-                    ctx.resume();
-                }
-            }
-        } catch(e) {}
-        playSound('startup');
-    }
+    if (startupPlayed) return;
+    startupPlayed = true;
+    try {
+        // @ts-ignore
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+            const ctx = new AudioCtx();
+            if (ctx.state === 'suspended') ctx.resume();
+        }
+    } catch(e) {}
+    playSound('startup');
 }
 
 // Attempt immediate playback on load
 function startImmediateAudio() {
     try {
-        const audio = new Audio(SYSTEM_SOUNDS.startup);
+        const audio = new Audio('/sounds/startup.mp3');
         audio.volume = masterVolume;
         audio.play().then(() => {
             startupPlayed = true;
         }).catch(() => {
-            // Browser autoplay policy blocked 0-interaction audio; listen for any first movement
-            const triggerOnce = () => {
+            // If browser blocks 0-interaction audio, trigger on first user action
+            const onFirstInteraction = () => {
                 triggerStartupSound();
-                ['pointerdown', 'pointermove', 'mousemove', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
-                    document.removeEventListener(evt, triggerOnce);
+                ['click', 'keydown', 'pointerdown', 'touchstart'].forEach(evt => {
+                    document.removeEventListener(evt, onFirstInteraction);
                 });
             };
-            ['pointerdown', 'pointermove', 'mousemove', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
-                document.addEventListener(evt, triggerOnce, { once: true, passive: true });
+            ['click', 'keydown', 'pointerdown', 'touchstart'].forEach(evt => {
+                document.addEventListener(evt, onFirstInteraction, { once: true, passive: true });
             });
         });
     } catch(e) {}

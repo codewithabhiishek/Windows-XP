@@ -2,7 +2,6 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import '@tailwindcss/browser';
 import { inject } from '@vercel/analytics';
 import { injectSpeedInsights } from '@vercel/speed-insights';
 
@@ -190,10 +189,12 @@ async function openApp(appName: string): Promise<void> {
         await initMediaPlayer(windowElement);
     }
     else if (appName === 'calculator') {
-        if (typeof initCalculator === 'function') initCalculator(windowElement);
+        const initCalc = (window as any).initCalculator;
+        if (typeof initCalc === 'function') initCalc(windowElement);
     }
     else if (appName === 'recycleBin') {
-        if (typeof initRecycleBin === 'function') initRecycleBin(windowElement);
+        const initBin = (window as any).initRecycleBin;
+        if (typeof initBin === 'function') initBin(windowElement);
     }
 }
 

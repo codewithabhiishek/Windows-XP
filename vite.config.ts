@@ -14,6 +14,19 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      build: {
+        target: 'es2022',
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              if (id.includes('node_modules/@vercel/')) {
+                return 'vendor-vercel';
+              }
+            },
+          },
+        },
+      },
     };
 });
+
